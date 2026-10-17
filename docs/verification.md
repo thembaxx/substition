@@ -10,7 +10,9 @@ Implementation date: 17 October 2026. Use synthetic data for all verification.
 - Next.js production compilation completed successfully with static app/legal/sign-in pages and dynamic optional-auth routes. The build emits the production worker after its client assets are known.
 - Original Blender illustration and generated install icon were opened with the image inspection tool.
 
-Final local run: **11 tests passed**; TypeScript, Oxlint, Oxfmt and the Next.js production build passed. The generated worker precaches **60 local assets**. `pnpm smoke` passed app/legal/sign-in routes, disabled-auth 503, security/no-cache headers, light/dark manifests and HTTP 200 for every shell asset. This checks serving and cache logic, not an actual browser installation.
+Final local run: **14 tests passed**; TypeScript, Oxlint, Oxfmt, Actionlint and the Next.js production build passed. The full dependency audit reported zero known vulnerabilities. The generated worker precaches **60 local assets**. `pnpm smoke` passed app/legal/sign-in routes, disabled-auth 503, security/no-cache headers, light/dark manifests and HTTP 200 for every shell asset. This checks serving and cache logic, not an actual browser installation.
+
+Automatic-maintenance setup adds three policy checks, full dependency-audit gating and a scheduled CodeQL workflow. Vulnerable PDF.js/Oxfmt resolutions were upgraded; PDF extraction now destroys its loading task on success or failure, as required by PDF.js 6. See `automatic-maintenance.md` for the publishing protocol and runtime setup.
 
 ## Not verified
 

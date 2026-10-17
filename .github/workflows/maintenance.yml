@@ -1,0 +1,157 @@
+name: Automatic maintenance
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      ai_improvements:
+        description: Attempt one small AI improvement if OPENAI_API_KEY is configured
+        type: boolean
+        default: true
+      apply:
+        description: Publish verified changes to main (false runs a dry run)
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: substition-maintenance
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main' && vars.MAINTENANCE_PAUSED != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      changed: ${{ steps.candidate.outputs.changed }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Save trusted guard outside the editable workspace
+        run: cp scripts/maintenance-policy.mjs "$RUNNER_TEMP/maintenance-policy.mjs"
+      - run: pnpm install --frozen-lockfile
+      - name: Refresh compatible direct and transitive dependencies
+        run: pnpm update --depth 100
+      - name: Determine optional AI availability
+        id: ai
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_REQUESTED: ${{ inputs.ai_improvements }}
+        run: |
+          enabled=false
+          if [ -n "$OPENAI_API_KEY" ]; then
+            if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$AI_REQUESTED" = true ]; then
+              enabled=true
+            elif [ "$GITHUB_EVENT_NAME" = schedule ] && [ "$(date -u +%u)" = 7 ]; then
+              enabled=true
+            fi
+          fi
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          if [ "$enabled" = false ]; then
+            echo "AI skipped: requires OPENAI_API_KEY plus a Sunday schedule or enabled manual run. Dependency maintenance continues." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: One bounded app improvement
+        if: steps.ai.outputs.enabled == 'true'
+        uses: openai/codex-action@1d82a3dba7c7988ec71ecae1ed5b8e8db96495c5 # v1
+        timeout-minutes: 15
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ":workspace"
+          safety-strategy: drop-sudo
+          prompt-file: .github/prompts/maintenance.md
+          codex-version: "0.163.0"
+          codex-args: '["--ephemeral"]'
+      - name: Apply deterministic formatting
+        run: pnpm format
+      - name: Capture and enforce the change policy
+        id: candidate
+        run: node "$RUNNER_TEMP/maintenance-policy.mjs" capture "$RUNNER_TEMP/candidate.json" "$GITHUB_SHA"
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - name: Reject known moderate, high and critical advisories
+        run: pnpm audit --audit-level moderate
+      - run: pnpm build
+      - run: pnpm smoke
+      - name: Verify the tested files are unchanged
+        run: node "$RUNNER_TEMP/maintenance-policy.mjs" unchanged "$RUNNER_TEMP/candidate.json" "$GITHUB_SHA"
+      - name: Save exact tested candidate
+        if: steps.candidate.outputs.changed == 'true'
+        id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-maintenance
+          path: ${{ runner.temp }}/candidate.json
+          retention-days: 14
+          if-no-files-found: error
+  publish:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true' && vars.MAINTENANCE_PAUSED != 'true' && (github.event_name == 'schedule' || inputs.apply)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.publish.outputs.commit }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.prepare.outputs.artifact_id }}
+          path: ${{ runner.temp }}/verified-maintenance
+          merge-multiple: true
+      - name: Revalidate with the trusted main-branch guard
+        run: node scripts/maintenance-policy.mjs apply "$RUNNER_TEMP/verified-maintenance/candidate.json" "$GITHUB_SHA"
+      - name: Fast-forward main only when its tested base is current
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh auth setup-git
+          git fetch origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "main advanced; refusing to publish an untested combination. The next run will use the new base." >&2
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config core.hooksPath /dev/null
+          git add --all
+          git commit -m 'chore: apply verified automated maintenance' -m "Verified run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          git push origin HEAD:refs/heads/main
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Published the exact tested candidate to main with a normal fast-forward push. No force push or protection bypass." >> "$GITHUB_STEP_SUMMARY"
+  confirm:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Explicitly dispatch Check after the bot push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run check.yml --ref main
+      - name: Refresh static security analysis after the bot push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run security.yml --ref main

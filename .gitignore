@@ -5,6 +5,7 @@ out/
 !.env.example
 *.tsbuildinfo
 *.log
+*.vault.json
 .DS_Store
 artifacts/
 public/pdf.worker.min.mjs

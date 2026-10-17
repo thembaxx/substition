@@ -140,16 +140,14 @@ export function statementDrafts(
 export async function extractPDF(file: File) {
   const pdf = await import("pdfjs-dist");
   pdf.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-  const document = await pdf.getDocument({
+  const task = pdf.getDocument({
     data: await file.arrayBuffer(),
     useSystemFonts: true,
     disableFontFace: true,
-  }).promise;
-  if (document.numPages > 50) {
-    await document.destroy();
-    throw new Error("Choose a statement with no more than 50 pages.");
-  }
+  });
   try {
+    const document = await task.promise;
+    if (document.numPages > 50) throw new Error("Choose a statement with no more than 50 pages.");
     const lines: string[] = [];
     for (let i = 1; i <= document.numPages; i++) {
       const page = await document.getPage(i),
@@ -167,7 +165,7 @@ export async function extractPDF(file: File) {
     }
     return lines.join("\n");
   } finally {
-    await document.destroy();
+    await task.destroy();
   }
 }
 export function pdfDrafts(text: string, currency: string) {

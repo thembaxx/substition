@@ -59,6 +59,12 @@ Tests cover money exponents, month-end/leap-year recurrence, encrypted round-tri
 
 `pnpm smoke` starts a temporary production server and checks the app/legal routes, disabled-auth response, headers, manifest variants and every precached asset. GitHub Actions runs the same checks on pushes and pull requests.
 
+## Automatic maintenance
+
+[Scheduled maintenance](docs/automatic-maintenance.md) refreshes compatible dependencies daily, rejects known moderate/high/critical advisories, runs the full suite and fast-forwards only the exact tested files into `main`. A separate publishing job holds the write token. Weekly CodeQL scanning and pinned-action Dependabot updates cover repository tooling.
+
+Optional weekly Codex improvements activate when the repository Actions secret `OPENAI_API_KEY` is configured. Financial/security logic, existing tests and workflow policy are protected from the maintenance bot. Manual runs support dry-run mode; `MAINTENANCE_PAUSED=true` stops publication. See the guide for setup, schedules, scope, limits and audit evidence.
+
 ## Optional account setup
 
 Copy `.env.example` to `.env.local` and configure PostgreSQL, a high-entropy Better Auth secret, the canonical app URL and a verified Resend sender. Never expose these through `NEXT_PUBLIC_*` variables. See [architecture](docs/architecture.md#optional-authentication) for migrations and account-data obligations. Sign-in never supplies the vault encryption key.
