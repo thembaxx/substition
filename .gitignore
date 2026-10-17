@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+.env*
+!.env.example
+*.tsbuildinfo
+*.log
+.DS_Store
+artifacts/
+public/pdf.worker.min.mjs
+public/sw.js
+public/asset-manifest.json

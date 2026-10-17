@@ -1,0 +1,10 @@
+{
+  "categories": { "correctness": "error" },
+  "plugins": ["react", "jsx-a11y"],
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "jsx-a11y/anchor-is-valid": "warn",
+    "jsx-a11y/prefer-tag-over-role": "off"
+  },
+  "ignorePatterns": ["node_modules", ".next", "public", "assets"]
+}
