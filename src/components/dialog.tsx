@@ -22,11 +22,7 @@ export default function Dialog({
     document.body.style.overflow = "hidden";
     return () => {
       dialog?.close();
-      if (previous) {
-        document.body.style.overflow = previous;
-      } else {
-        document.body.style.removeProperty("overflow");
-      }
+      document.body.style.overflow = previous;
     };
   }, []);
   return (
