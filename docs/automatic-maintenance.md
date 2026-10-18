@@ -7,7 +7,7 @@ The repository runs daily dependency maintenance and can run one weekly AI-assis
 | Workflow                          | Schedule                                             | Result                                                                                                     |
 | --------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | Automatic maintenance             | Daily, 06:17 UTC                                     | Refresh compatible direct/transitive dependencies; format; run all gates; publish safe changes.            |
-| AI improvement inside maintenance | Sunday, or an enabled manual run                     | One small, justified UI/accessibility/performance fix, when `OPENAI_API_KEY` exists.                       |
+| AI improvement inside maintenance | Sunday, or an enabled manual run                     | One small, justified UI/accessibility/performance fix, when `GEMINI_API_KEY` exists.                       |
 | Security analysis                 | Saturday, 05:43 UTC, plus pushes/PRs/manual dispatch | CodeQL JavaScript/TypeScript security-extended analysis in GitHub's Security tab.                          |
 | Check                             | Pushes, PRs and explicit post-maintenance dispatch   | Tests, types, lint, formatting, dependency audit, production build and HTTP smoke checks.                  |
 | Dependabot for GitHub Actions     | Monday, 05:00 UTC                                    | Reviewable PRs for pinned workflow-action versions. Workflow changes are not self-approved by maintenance. |
@@ -20,7 +20,7 @@ Set the repository Actions variable `MAINTENANCE_PAUSED` to `true` to stop prepa
 
 1. A read-only job checks out the current trusted `main` snapshot with persisted Git credentials disabled.
 2. `pnpm update --depth 100` refreshes versions within the existing constraints. The package manager's allowed-build policy remains intact.
-3. If configured, Codex runs with `:workspace`, no general network permission, ephemeral session storage and the action's `drop-sudo` strategy. It receives no repository write token. It may make one bounded improvement or correctly choose no change.
+3. If configured, a Node script makes one Gemini Interactions API request using `gemini-3.8-flash`, capped at 8,192 output tokens and two minutes. It supplies only named repository source files, requests structured replacements, sets `store: false`, and provides no model tools or command execution. It validates the entire proposal before writing files. A no-change proposal is valid. API/network/quota failures record an AI skip and leave dependency maintenance running; invalid or unsafe proposals stop the workflow. There are no retries or alternate-model fallbacks.
 4. A guard copied outside the editable workspace captures the candidate. It rejects changes outside an allowlist, edits to existing tests, dependency additions/removals, script/package-manager changes, major version upgrades, pre-1.0 minor jumps, deletions, symlinks, oversized changes and digest mismatches.
 5. The exact candidate must pass tests, typecheck, lint, formatting, a full dependency audit at moderate-or-higher severity, production build and HTTP smoke checks. Audit/network failures fail closed; there is no ignore-advisory list.
 6. The guard confirms checks did not change the candidate. An immutable workflow artifact contains only validated paths, text and content hashes.
@@ -40,13 +40,15 @@ Compatible updates are attempted daily. When an advisory requires a major upgrad
 
 ## Enabling weekly AI improvements
 
-Add an OpenAI API project key as repository Actions secret **`OPENAI_API_KEY`** at:
+Add a Google AI Studio Gemini API key as repository Actions secret **`GEMINI_API_KEY`** at:
 
 <https://github.com/thembaxx/substition/settings/secrets/actions>
 
 The current connector cannot manage repository secrets. Do not paste a key into chat, source code, an issue, a workflow variable or an artifact. The workflow detects the secret at runtime; absent credentials cause a documented AI skip, not a fake improvement or a failure of dependency maintenance.
 
-The agent uses OpenAI API credits, independently of a ChatGPT subscription. Set an appropriate project spend limit. The AI step is limited to 15 minutes and one improvement per weekly/manual run. The publishing job never receives the API key. Only repository code and synthetic fixtures are used; app users' vaults and statements remain on their devices. This build-time agent is separate from the product's optional offline LLM.
+`gemini-3.8-flash` has a free API tier as checked on 18 October 2026. For zero API charges, use a project without billing and stay within its free quotas. A key from a billing-enabled project follows that project's pricing; the workflow cannot change its billing settings. The model is fixed in reviewed source, with one request per weekly/manual run and no paid-model fallback. The GitHub step has a three-minute timeout.
+
+Google's unpaid-service terms may use submitted source and generated output to improve products, subject to regional/account exceptions. `store: false` disables stored Interaction objects; it does not override those terms. The request contains only README, architecture, package metadata and the six allowed UI files, with a 160 KB context cap. The API key is an HTTP header, never prompt content; its environment binding is removed before local validation and no raw provider error body is logged. The publishing job never receives it. Users' vaults and statements remain on their devices. This maintenance helper is separate from the product's offline LLM. `HIBP_API_KEY` and a personal GitHub token are not used by this workflow.
 
 ## Security fixes included with setup
 
@@ -60,10 +62,11 @@ The resulting full audit reports zero known vulnerabilities. This is a dated dep
 ## Verification and operations
 
 - `pnpm test` includes policy tests for protected paths, tampered digests, incompatible dependency changes, exact-file publication, post-check mutations and stale base rejection.
+- Gemini tests check stateless/credential-separated requests, quota/network failures, incomplete/malformed output, exact replacement matching, protected paths, existing-test rejection and no-change proposals without making real API calls.
 - Actionlint validates all workflow YAML.
 - `pnpm audit --audit-level moderate` covers development dependencies as well as production packages.
 - `pnpm build && pnpm smoke` verifies serving of every offline shell asset, including the local PDF worker.
 - Manually dispatch a dry run before changing any maintenance policy. Inspect the candidate artifact and run summary, then test an apply run.
 - Revert a bad application change through a normal tested commit/PR. Do not force-reset `main` or overwrite device vaults.
 
-External references: [Codex Action and its security strategy](https://github.com/openai/codex-action), [GitHub token behaviour](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), [CodeQL advanced setup](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning), and [Dependabot configuration](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference).
+External references: [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output), [Interactions API](https://ai.google.dev/api/interactions), [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing), [Gemini terms](https://ai.google.dev/gemini-api/terms), [GitHub token behaviour](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), [CodeQL advanced setup](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning), and [Dependabot configuration](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference).

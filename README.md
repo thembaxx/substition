@@ -63,7 +63,7 @@ Tests cover money exponents, month-end/leap-year recurrence, encrypted round-tri
 
 [Scheduled maintenance](docs/automatic-maintenance.md) refreshes compatible dependencies daily, rejects known moderate/high/critical advisories, runs the full suite and fast-forwards only the exact tested files into `main`. A separate publishing job holds the write token. Weekly CodeQL scanning and pinned-action Dependabot updates cover repository tooling.
 
-Optional weekly Codex improvements activate when the repository Actions secret `OPENAI_API_KEY` is configured. Financial/security logic, existing tests and workflow policy are protected from the maintenance bot. Manual runs support dry-run mode; `MAINTENANCE_PAUSED=true` stops publication. See the guide for setup, schedules, scope, limits and audit evidence.
+Optional weekly Gemini improvements activate when the repository Actions secret `GEMINI_API_KEY` is configured. One stateless request proposes a small patch using a free-tier Flash model; quota/network failures skip AI while dependency checks continue. Financial/security logic, existing tests and workflow policy are protected from the maintenance bot. Manual runs support dry-run mode; `MAINTENANCE_PAUSED=true` stops publication. See the guide for setup, pricing/privacy terms, scope, limits and audit evidence.
 
 ## Optional account setup
 

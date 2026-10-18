@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       ai_improvements:
-        description: Attempt one small AI improvement if OPENAI_API_KEY is configured
+        description: Attempt one small Gemini improvement if GEMINI_API_KEY is configured
         type: boolean
         default: true
       apply:
@@ -46,11 +46,11 @@ jobs:
       - name: Determine optional AI availability
         id: ai
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AI_REQUESTED: ${{ inputs.ai_improvements }}
         run: |
           enabled=false
-          if [ -n "$OPENAI_API_KEY" ]; then
+          if [ -n "$GEMINI_API_KEY" ]; then
             if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$AI_REQUESTED" = true ]; then
               enabled=true
             elif [ "$GITHUB_EVENT_NAME" = schedule ] && [ "$(date -u +%u)" = 7 ]; then
@@ -59,19 +59,14 @@ jobs:
           fi
           echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
           if [ "$enabled" = false ]; then
-            echo "AI skipped: requires OPENAI_API_KEY plus a Sunday schedule or enabled manual run. Dependency maintenance continues." >> "$GITHUB_STEP_SUMMARY"
+            echo "AI skipped: requires GEMINI_API_KEY plus a Sunday schedule or enabled manual run. Dependency maintenance continues." >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: One bounded app improvement
+      - name: Propose one bounded improvement with Gemini
         if: steps.ai.outputs.enabled == 'true'
-        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1
-        timeout-minutes: 15
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          permission-profile: ":workspace"
-          safety-strategy: drop-sudo
-          prompt-file: .github/prompts/maintenance.md
-          codex-version: "0.163.0"
-          codex-args: '["--ephemeral"]'
+        timeout-minutes: 3
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/gemini-maintenance.mjs
       - name: Apply deterministic formatting
         run: pnpm format
       - name: Capture and enforce the change policy
