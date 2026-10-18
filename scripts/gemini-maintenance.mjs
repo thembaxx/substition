@@ -52,7 +52,7 @@ export async function requestProposal(apiKey, instructions, sources, fetcher = f
         system_instruction: instructions,
         input,
         store: false,
-        generation_config: { temperature: 0.2, max_output_tokens: 8192 },
+        generation_config: { temperature: 0.2, thinking_level: "low", max_output_tokens: 8192 },
         response_format: { type: "text", mime_type: "application/json", schema },
       }),
     });
@@ -73,6 +73,7 @@ export async function requestProposal(apiKey, instructions, sources, fetcher = f
     return { unavailable: `HTTP ${response.status}${reason ? ` (${reason})` : ""}` };
   }
   const result = await response.json();
+  if (result.status === "incomplete") return { unavailable: "incomplete response discarded" };
   assert.equal(result.status, "completed", "Gemini did not complete a proposal");
   const text = (result.steps ?? [])
     .filter((step) => step.type === "model_output")

@@ -32,6 +32,7 @@ test("Gemini makes one bounded stateless request without putting credentials int
       assert.equal(body.store, false);
       assert.equal(body.tools, undefined);
       assert.equal(body.generation_config.max_output_tokens, 8192);
+      assert.equal(body.generation_config.thinking_level, "low");
       assert.equal(body.response_format.mime_type, "application/json");
       assert.ok(!(options.body as string).includes("synthetic-test-key"));
       return response(proposal);
@@ -41,7 +42,7 @@ test("Gemini makes one bounded stateless request without putting credentials int
   assert.deepEqual(result.proposal, proposal);
 });
 
-test("Gemini skips unavailable service without retries and rejects incomplete or malformed output", async () => {
+test("Gemini skips unavailable or incomplete generation and rejects malformed output", async () => {
   let calls = 0;
   const unavailable = await requestProposal("test", "task", [], async () => {
     calls++;
@@ -49,6 +50,10 @@ test("Gemini skips unavailable service without retries and rejects incomplete or
   });
   assert.equal(calls, 1);
   assert.deepEqual(unavailable, { unavailable: "HTTP 429" });
+  assert.deepEqual(
+    await requestProposal("test", "task", [], async () => Response.json({ status: "incomplete" })),
+    { unavailable: "incomplete response discarded" },
+  );
   assert.deepEqual(
     await requestProposal("test", "task", [], async () =>
       Response.json(

@@ -20,7 +20,7 @@ Set the repository Actions variable `MAINTENANCE_PAUSED` to `true` to stop prepa
 
 1. A read-only job checks out the current trusted `main` snapshot with persisted Git credentials disabled.
 2. `pnpm update --depth 100` refreshes versions within the existing constraints. The package manager's allowed-build policy remains intact.
-3. If configured, a Node script makes one Gemini Interactions API request using `gemini-3.8-flash`, capped at 8,192 output tokens and two minutes. It supplies only named repository source files, requests structured replacements, sets `store: false`, and provides no model tools or command execution. It validates the entire proposal before writing files. A no-change proposal is valid. API/network/quota failures record an AI skip and leave dependency maintenance running; invalid or unsafe proposals stop the workflow. There are no retries or alternate-model fallbacks.
+3. If configured, a Node script makes one Gemini Interactions API request using `gemini-3.8-flash`, with low thinking effort, capped at 8,192 output tokens and two minutes. It supplies only named repository source files, requests structured replacements, sets `store: false`, and provides no model tools or command execution. It validates the entire proposal before writing files. A no-change proposal is valid. API/network/quota failures or incomplete generations record an AI skip and leave dependency maintenance running; malformed or unsafe proposals stop the workflow. There are no retries or alternate-model fallbacks.
 4. A guard copied outside the editable workspace captures the candidate. It rejects changes outside an allowlist, edits to existing tests, dependency additions/removals, script/package-manager changes, major version upgrades, pre-1.0 minor jumps, deletions, symlinks, oversized changes and digest mismatches.
 5. The exact candidate must pass tests, typecheck, lint, formatting, a full dependency audit at moderate-or-higher severity, production build and HTTP smoke checks. Audit/network failures fail closed; there is no ignore-advisory list.
 6. The guard confirms checks did not change the candidate. An immutable workflow artifact contains only validated paths, text and content hashes.
@@ -62,7 +62,7 @@ The resulting full audit reports zero known vulnerabilities. This is a dated dep
 ## Verification and operations
 
 - `pnpm test` includes policy tests for protected paths, tampered digests, incompatible dependency changes, exact-file publication, post-check mutations and stale base rejection.
-- Gemini tests check stateless/credential-separated requests, quota/network failures, incomplete/malformed output, exact replacement matching, protected paths, existing-test rejection and no-change proposals without making real API calls.
+- Gemini tests check stateless/credential-separated requests, quota/network failures, incomplete-response discarding, malformed-output rejection, exact replacement matching, protected paths, existing-test rejection and no-change proposals without making real API calls.
 - Actionlint validates all workflow YAML.
 - `pnpm audit --audit-level moderate` covers development dependencies as well as production packages.
 - `pnpm build && pnpm smoke` verifies serving of every offline shell asset, including the local PDF worker.
