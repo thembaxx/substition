@@ -18,9 +18,10 @@ test("Gemini makes one bounded stateless request without putting credentials int
     "synthetic-test-key",
     "Return a minimal patch.",
     [{ path: "src/app/loading.tsx", content: "<main>Loading</main>" }],
-    async (url: string, options: RequestInit) => {
+    async (url, options) => {
       calls++;
       assert.equal(url, "https://generativelanguage.googleapis.com/v1beta/interactions");
+      assert.ok(options);
       assert.equal(options.redirect, "error");
       assert.equal(
         (options.headers as Record<string, string>)["x-goog-api-key"],
@@ -62,13 +63,13 @@ test("Gemini skips unavailable service without retries and rejects incomplete or
     ),
     { unavailable: "HTTP 400 (API_KEY_INVALID)" },
   );
-  assert.match(
+  assert.equal(
     (
       await requestProposal("test", "task", [], async () => {
         throw new Error("offline");
       })
     ).unavailable,
-    /network error/,
+    "network error or two-minute timeout",
   );
   await assert.rejects(() =>
     requestProposal("test", "task", [], async () => Response.json({ status: "requires_action" })),

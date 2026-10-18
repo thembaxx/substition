@@ -14,6 +14,8 @@ Final local run: **14 tests passed**; TypeScript, Oxlint, Oxfmt, Actionlint and 
 
 Automatic-maintenance setup adds three policy checks, full dependency-audit gating and a scheduled CodeQL workflow. Vulnerable PDF.js/Oxfmt resolutions were upgraded; PDF extraction now destroys its loading task on success or failure, as required by PDF.js 6. See `automatic-maintenance.md` for the publishing protocol and runtime setup.
 
+18 October 2026: the Gemini maintenance helper adds mocked request and patch-validation checks, bringing the suite to **17 passing tests**. TypeScript, Oxlint, Oxfmt and Actionlint passed locally; the dependency audit reported zero known vulnerabilities. Live API access is checked separately through the repository's Actions secret.
+
 ## Not verified
 
 Browser automation was not callable in this session, including on retry. No browser-rendered screenshots, browser console check, visual fidelity pass or actual iOS/Android installation was performed. `design-qa.md` records `final result: blocked`. Static layout code is not a substitute for these checks.
