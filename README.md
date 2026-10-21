@@ -6,7 +6,7 @@
 
 **Built with:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, WebLLM, Better Auth (optional integration), Oxlint and Oxfmt. Versions and enabled integrations are documented below.
 
-**Project status:** functional first release and demonstration workspace, *not* a connected financial service. Cancellation is guided, not performed automatically. Real bank/email discovery and cloud sync are not connected. See [deliberate boundaries](#deliberate-boundaries) for limits.
+**Project status:** functional first release and demonstration workspace, _not_ a connected financial service. Cancellation is guided, not performed automatically. Real bank/email discovery and cloud sync are not connected. See [deliberate boundaries](#deliberate-boundaries) for limits.
 
 [View source](https://github.com/thembaxx/substition) · [Verification notes](docs/verification.md)
 
