@@ -1,5 +1,17 @@
 # Substition
 
+**A privacy-conscious, local-first subscription dashboard** for tracking renewal dates, recurring spending, trials and cancellation next steps without linking a bank account.
+
+**Implementation highlights:** passphrase-derived AES-GCM encrypted IndexedDB workspace; local CSV and text-PDF import with user review; exportable calendars and encrypted backups; installable offline PWA; optional, explicitly downloaded WebGPU-based local assistant.
+
+**Built with:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, WebLLM, Better Auth (optional integration), Oxlint and Oxfmt. Versions and enabled integrations are documented below.
+
+**Project status:** functional first release and demonstration workspace, _not_ a connected financial service. Cancellation is guided, not performed automatically. Real bank/email discovery and cloud sync are not connected. See [deliberate boundaries](#deliberate-boundaries) for limits.
+
+[View source](https://github.com/thembaxx/substition) · [Verification notes](docs/verification.md)
+
+---
+
 **A little clarity. A lot more control.** A local-first subscription manager built with Next.js, TypeScript, Tailwind CSS, pnpm, Oxlint and Oxfmt.
 
 ## Run
