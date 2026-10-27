@@ -52,6 +52,7 @@ import {
   toMinor,
   totals,
   upcoming,
+  validateWorkspace,
   type Subscription,
   type Workspace,
 } from "@/lib/subscriptions";
@@ -70,6 +71,15 @@ import SubscriptionForm, { MerchantLogo } from "./subscription-form";
 import ImportPanel from "./import-panel";
 import NativeSupport from "./native-support";
 import Ambient from "./ambient";
+import RenewalReview from "./renewal-review";
+import {
+  addReviewedReceipt,
+  applyReviewedPrice,
+  emptyRenewalHistory,
+  restoreRenewalHistory,
+  validateReceiptPrice,
+  type RenewalHistory,
+} from "@/lib/renewal-review";
 const OfflineAssistant = dynamic(() => import("./offline-assistant"), {
   ssr: false,
   loading: () => <p className="muted">Opening your private assistant…</p>,
@@ -85,6 +95,14 @@ type Panel =
   | "budget"
   | "erase"
   | null;
+type ImportReviewChoice = {
+  subscription: Subscription;
+  action: "add" | "skip" | "review";
+  targetId: string;
+  receiptDate: string;
+  reference: string;
+  applyPrice: boolean;
+};
 const views = [
   { id: "overview", label: "Overview", icon: House },
   { id: "subscriptions", label: "Subscriptions", icon: ListBullets },
@@ -96,6 +114,7 @@ const emptyWorkspace = (): Workspace => ({
   subscriptions: [],
   currency: "USD",
   budgetMinor: 12000,
+  renewalHistory: emptyRenewalHistory(),
 });
 const dateLabel = (
   date: string,
@@ -132,6 +151,7 @@ export default function WorkspaceApp() {
     [installAction, setInstallAction] = useState<(() => void) | null>(null),
     [playful, setPlayful] = useState(false),
     [undo, setUndo] = useState<Subscription | null>(null);
+  const [importReview, setImportReview] = useState<ImportReviewChoice[] | null>(null);
   const keyRef = useRef<CryptoKey | null>(null),
     saltRef = useRef<Uint8Array | null>(null),
     saveQueue = useRef<Promise<void>>(Promise.resolve()),
@@ -288,6 +308,7 @@ export default function WorkspaceApp() {
     setView(next);
     setSelected(null);
     setPanel(null);
+    setImportReview(null);
     setQuery("");
     if (next === "overview") {
       setFilter("active");
@@ -330,6 +351,115 @@ export default function WorkspaceApp() {
     setUndo(sub);
     setSelected(null);
     notify(`${sub.name} removed from your tracker. This does not cancel it.`);
+  }
+  function saveRenewalReview(history: RenewalHistory, updatedSubscription?: Subscription) {
+    if (!selected) throw new Error("Open the subscription again before saving this review.");
+    if (updatedSubscription && updatedSubscription.id !== selected.id) {
+      throw new Error("This price review belongs to another subscription.");
+    }
+    const next = validateWorkspace({
+      ...workspace,
+      renewalHistory: history,
+      subscriptions: updatedSubscription
+        ? workspace.subscriptions.map((sub) => (sub.id === selected.id ? updatedSubscription : sub))
+        : workspace.subscriptions,
+    });
+    setWorkspace(next);
+    if (updatedSubscription) setSelected(updatedSubscription);
+    notify(
+      mode === "demo"
+        ? "Review added to this demo visit only."
+        : "Review added. Your encrypted local vault is saving.",
+    );
+  }
+  function matchingSubscriptions(candidate: Subscription) {
+    if (candidate.providerId === "custom") return [];
+    return workspace.subscriptions.filter(
+      (sub) =>
+        sub.providerId === candidate.providerId &&
+        sub.currency === candidate.currency &&
+        sub.interval === candidate.interval,
+    );
+  }
+  function beginImportReview(subscriptions: Subscription[]) {
+    setImportReview(
+      subscriptions.map((subscription) => ({
+        subscription,
+        action: matchingSubscriptions(subscription).length ? "skip" : "add",
+        targetId: "",
+        receiptDate: "",
+        reference: "",
+        applyPrice: false,
+      })),
+    );
+  }
+  function updateImportChoice(index: number, change: Partial<ImportReviewChoice>) {
+    setImportReview(
+      (choices) =>
+        choices?.map((choice, itemIndex) =>
+          itemIndex === index ? { ...choice, ...change } : choice,
+        ) ?? null,
+    );
+  }
+  function confirmImportReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!importReview) return;
+    try {
+      const subscriptions = [...workspace.subscriptions];
+      let renewalHistory = restoreRenewalHistory(workspace.renewalHistory);
+      let added = 0;
+      let reviewed = 0;
+      for (const choice of importReview) {
+        if (choice.action === "skip") continue;
+        if (choice.action === "add") {
+          if (subscriptions.some((sub) => sub.id === choice.subscription.id)) {
+            throw new Error(
+              "This imported subscription was already added. Review your import again.",
+            );
+          }
+          subscriptions.push(choice.subscription);
+          added++;
+          continue;
+        }
+        const index = subscriptions.findIndex((sub) => sub.id === choice.targetId);
+        const target = subscriptions[index];
+        if (
+          !target ||
+          target.providerId !== choice.subscription.providerId ||
+          target.currency !== choice.subscription.currency ||
+          target.interval !== choice.subscription.interval
+        ) {
+          throw new Error(
+            "Choose a matching subscription with the same currency and billing cycle.",
+          );
+        }
+        const receipt = validateReceiptPrice({
+          id: crypto.randomUUID(),
+          subscriptionId: target.id,
+          merchant: choice.subscription.name,
+          date: choice.receiptDate,
+          currency: choice.subscription.currency,
+          interval: choice.subscription.interval,
+          amountMinor: choice.subscription.amountMinor,
+          source: "statement",
+          provenance: choice.reference,
+          reviewed: true,
+          reviewedAt: Date.now(),
+        });
+        renewalHistory = addReviewedReceipt(renewalHistory, receipt);
+        if (choice.applyPrice) subscriptions[index] = applyReviewedPrice(target, receipt);
+        reviewed++;
+      }
+      const next = validateWorkspace({ ...workspace, subscriptions, renewalHistory });
+      setWorkspace(next);
+      setImportReview(null);
+      setPanel(null);
+      notify(
+        `${added} subscriptions added; ${reviewed} price references recorded. Original statements were not stored. ${mode === "demo" ? "Demo changes last for this visit." : "Your local vault is saving."}`,
+      );
+    } catch (cause) {
+      notify(cause instanceof Error ? cause.message : "Check the import review before saving.");
+    }
   }
   async function openVault(event: FormEvent<HTMLFormElement>, create = false) {
     event.preventDefault();
@@ -1254,6 +1384,8 @@ export default function WorkspaceApp() {
           ) : (
             <SubscriptionDetail
               subscription={selected}
+              renewalHistory={workspace.renewalHistory}
+              onRenewalReview={saveRenewalReview}
               onEdit={() => setEditing(true)}
               onRemove={() => remove(selected)}
               onCancel={(note) => {
@@ -1276,21 +1408,134 @@ export default function WorkspaceApp() {
         <Dialog
           title="Find your recurring things."
           subtitle="A private little subscription audit."
-          onClose={() => setPanel(null)}
+          onClose={() => {
+            setPanel(null);
+            setImportReview(null);
+          }}
         >
-          <ImportPanel
-            currency={workspace.currency}
-            existing={workspace.subscriptions}
-            onImport={(subs) => {
-              if (workspace.subscriptions.length + subs.length > 2000) {
-                notify("Import fewer entries. A workspace supports up to 2,000 subscriptions.");
-                return;
-              }
-              setWorkspace((w) => ({ ...w, subscriptions: [...w.subscriptions, ...subs] }));
-              setPanel(null);
-              notify(`${subs.length} reviewed subscriptions added. Your statement was not stored.`);
-            }}
-          />
+          {importReview ? (
+            <form className="subscription-form" onSubmit={confirmImportReview}>
+              <h3>Choose what to keep</h3>
+              <p className="small muted">
+                Existing matches start skipped. You can add a separate plan or record a reviewed
+                price reference for one matching subscription. No existing amount changes until you
+                explicitly choose it and confirm.
+              </p>
+              {importReview.map((choice, index) => {
+                const matches = matchingSubscriptions(choice.subscription);
+                const target = matches.find((sub) => sub.id === choice.targetId);
+                return (
+                  <div className="import-draft" key={choice.subscription.id}>
+                    <h4>
+                      {choice.subscription.name} ·{" "}
+                      {money(choice.subscription.amountMinor, choice.subscription.currency)} /{" "}
+                      {choice.subscription.interval}
+                    </h4>
+                    <label>
+                      Import action
+                      <select
+                        value={
+                          choice.action === "review" ? `review:${choice.targetId}` : choice.action
+                        }
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          updateImportChoice(
+                            index,
+                            value.startsWith("review:")
+                              ? { action: "review", targetId: value.slice(7), applyPrice: false }
+                              : {
+                                  action: value as "add" | "skip",
+                                  targetId: "",
+                                  applyPrice: false,
+                                },
+                          );
+                        }}
+                      >
+                        <option value="skip">Skip this candidate</option>
+                        <option value="add">Add as a separate subscription</option>
+                        {matches.map((sub) => (
+                          <option key={sub.id} value={`review:${sub.id}`}>
+                            Record price reference for {sub.name} · {sub.plan} ·{" "}
+                            {money(sub.amountMinor, sub.currency)} / {sub.interval}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {choice.action === "add" && (
+                      <p className="small muted">
+                        Adds a separate tracker entry with next charge{" "}
+                        {choice.subscription.nextCharge}. This does not modify another plan.
+                      </p>
+                    )}
+                    {choice.action === "review" && target && (
+                      <>
+                        <p className="small muted">
+                          Tracked: {money(target.amountMinor, target.currency)} / {target.interval}.
+                          Reviewed candidate:{" "}
+                          {money(choice.subscription.amountMinor, choice.subscription.currency)} /{" "}
+                          {choice.subscription.interval}. The next-charge date stays unchanged.
+                        </p>
+                        <label>
+                          Original receipt or statement charge date
+                          <input
+                            type="date"
+                            value={choice.receiptDate}
+                            onChange={(event) =>
+                              updateImportChoice(index, { receiptDate: event.target.value })
+                            }
+                            required
+                          />
+                        </label>
+                        <label>
+                          Short source reference
+                          <input
+                            value={choice.reference}
+                            onChange={(event) =>
+                              updateImportChoice(index, { reference: event.target.value })
+                            }
+                            placeholder="Invoice reference or statement filename"
+                            maxLength={240}
+                            required
+                          />
+                        </label>
+                        <label className="checkbox-line">
+                          <input
+                            type="checkbox"
+                            checked={choice.applyPrice}
+                            onChange={(event) =>
+                              updateImportChoice(index, { applyPrice: event.target.checked })
+                            }
+                          />
+                          Also replace the tracked amount with this reviewed price
+                        </label>
+                        <p className="small muted">
+                          Only the selected subscription is linked. No original document or account
+                          details are retained. A price reference does not change the merchant
+                          contract or tracked status.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="submit"
+                className="button primary full"
+                disabled={!importReview.some((choice) => choice.action !== "skip")}
+              >
+                Confirm selected import actions
+              </button>
+              <button type="button" className="text-button" onClick={() => setImportReview(null)}>
+                Choose another statement
+              </button>
+            </form>
+          ) : (
+            <ImportPanel
+              currency={workspace.currency}
+              existing={workspace.subscriptions}
+              onImport={beginImportReview}
+            />
+          )}
         </Dialog>
       )}
       {panel === "assistant" && (
@@ -1572,11 +1817,15 @@ function ChatIllustration() {
 
 function SubscriptionDetail({
   subscription: sub,
+  renewalHistory,
+  onRenewalReview,
   onEdit,
   onRemove,
   onCancel,
 }: {
   subscription: Subscription;
+  renewalHistory: RenewalHistory;
+  onRenewalReview: (history: RenewalHistory, updatedSubscription?: Subscription) => void;
   onEdit: () => void;
   onRemove: () => void;
   onCancel: (note: string) => void;
@@ -1644,6 +1893,7 @@ function SubscriptionDetail({
           <span>Your cancellation note: {sub.cancellationNote}</span>
         </div>
       )}
+      <RenewalReview subscription={sub} history={renewalHistory} onChange={onRenewalReview} />
       <div className="cancellation-guide">
         <div className="section-heading">
           <h3>A clear way out.</h3>
