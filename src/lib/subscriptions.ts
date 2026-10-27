@@ -1,4 +1,5 @@
 import type { BillingPlatform, Category } from "./catalog";
+import { emptyRenewalHistory, restoreRenewalHistory, type RenewalHistory } from "./renewal-review";
 
 export type Interval = "monthly" | "annual" | "quarterly" | "weekly";
 export type Subscription = {
@@ -21,6 +22,7 @@ export type Workspace = {
   subscriptions: Subscription[];
   budgetMinor: number;
   currency: string;
+  renewalHistory: RenewalHistory;
 };
 export const supportedCurrencies = [
   ...new Set([
@@ -216,6 +218,7 @@ export function demoWorkspace(): Workspace {
   ];
   return {
     version: 1,
+    renewalHistory: emptyRenewalHistory(),
     currency: "USD",
     budgetMinor: 12000,
     subscriptions: rows.map(
@@ -278,5 +281,6 @@ export function validateWorkspace(value: unknown): Workspace {
     ids.add(sub.id);
     parseDate(sub.nextCharge);
   }
+  w.renewalHistory = restoreRenewalHistory(w.renewalHistory);
   return w;
 }
