@@ -127,6 +127,7 @@ textarea {
   color: var(--ink);
   outline: none;
   transition: border-color 0.2s;
+  font-size: max(var(--touch-input-font-min, 0px), 1em);
 }
 input:focus,
 select:focus,
@@ -245,9 +246,11 @@ img {
     background 0.2s,
     box-shadow 0.2s;
 }
-.button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 14px #233f2c12;
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 14px #233f2c12;
+  }
 }
 .button:active:not(:disabled) {
   transform: scale(0.97);
@@ -273,8 +276,10 @@ img {
   font-size: 12px;
   min-height: 34px;
 }
-.text-button:hover {
-  opacity: 0.7;
+@media (hover: hover) and (pointer: fine) {
+  .text-button:hover {
+    opacity: 0.7;
+  }
 }
 .icon-button {
   width: 38px;
@@ -286,8 +291,10 @@ img {
   border-radius: 50%;
   transition: background 0.2s;
 }
-.icon-button:hover {
-  background: var(--surface-soft);
+@media (hover: hover) and (pointer: fine) {
+  .icon-button:hover {
+    background: var(--surface-soft);
+  }
 }
 .danger {
   color: #bb554c;
@@ -361,8 +368,10 @@ img {
   color: var(--on-primary);
   box-shadow: 0 2px 6px #20352212;
 }
-.desktop-nav button:not(.active):hover {
-  background: var(--surface);
+@media (hover: hover) and (pointer: fine) {
+  .desktop-nav button:not(.active):hover {
+    background: var(--surface);
+  }
 }
 .header-actions {
   display: flex;
@@ -830,9 +839,11 @@ h1 > span:not(.heading-count) {
     background 0.2s,
     border-radius 0.2s;
 }
-.subscription-row:hover {
-  background: var(--surface);
-  border-radius: 13px;
+@media (hover: hover) and (pointer: fine) {
+  .subscription-row:hover {
+    background: var(--surface);
+    border-radius: 13px;
+  }
 }
 .subscription-row > svg {
   color: var(--faint);
@@ -940,8 +951,10 @@ h1 > span:not(.heading-count) {
   gap: 6px;
   padding: 19px 10px;
 }
-.list-footer:hover {
-  color: var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .list-footer:hover {
+    color: var(--ink);
+  }
 }
 .upcoming-section .section-heading h2 {
   font-size: 19px;
@@ -1204,7 +1217,7 @@ h1 > span:not(.heading-count) {
   background: transparent;
   border: 0;
   padding: 12px 0;
-  font-size: 13px;
+  font-size: max(var(--touch-input-font-min, 0px), 13px);
   box-shadow: none;
 }
 .search-field > svg {
@@ -1222,7 +1235,7 @@ h1 > span:not(.heading-count) {
 .filter-select select {
   border: 0;
   background: none;
-  font-size: 12px;
+  font-size: max(var(--touch-input-font-min, 0px), 12px);
   padding: 12px 0;
 }
 .filter-select > svg {
@@ -1230,7 +1243,7 @@ h1 > span:not(.heading-count) {
 }
 .status-select {
   max-width: 150px;
-  font-size: 12px;
+  font-size: max(var(--touch-input-font-min, 0px), 12px);
 }
 .full-list-section .subscription-row {
   padding: 18px 6px;
@@ -1338,9 +1351,13 @@ h1 > span:not(.heading-count) {
   background: var(--primary);
   color: var(--on-primary);
 }
-.calendar-day:hover,
 .calendar-day.selected {
   background: var(--mint);
+}
+@media (hover: hover) and (pointer: fine) {
+  .calendar-day:hover {
+    background: var(--mint);
+  }
 }
 .calendar-logos {
   display: flex;
@@ -1680,7 +1697,7 @@ h1 > span:not(.heading-count) {
 .subscription-form input,
 .subscription-form select,
 .subscription-form textarea {
-  font-size: 13px;
+  font-size: max(var(--touch-input-font-min, 0px), 13px);
   font-weight: 400;
 }
 .subscription-form .checkbox-line {
@@ -1862,7 +1879,7 @@ h1 > span:not(.heading-count) {
 }
 .import-draft select,
 .import-draft input[type="date"] {
-  font-size: 12px;
+  font-size: max(var(--touch-input-font-min, 0px), 12px);
 }
 .detail-summary {
   display: flex;
@@ -2302,7 +2319,7 @@ h1 > span:not(.heading-count) {
   background: none;
   padding: 7px 13px;
   box-shadow: none;
-  font-size: 12px;
+  font-size: max(var(--touch-input-font-min, 0px), 12px);
 }
 .chat-form button {
   width: 34px;
@@ -3404,20 +3421,20 @@ h1 > span:not(.heading-count) {
     padding: 0 10px;
   }
   .search-field input {
-    font-size: 12px;
+    font-size: max(var(--touch-input-font-min, 0px), 12px);
   }
   .filter-select {
     padding: 0 7px;
   }
   .filter-select select {
-    font-size: 10px;
+    font-size: max(var(--touch-input-font-min, 0px), 10px);
     padding: 11px 0;
   }
   .filter-select > svg {
     width: 15px;
   }
   .status-select {
-    font-size: 10px;
+    font-size: max(var(--touch-input-font-min, 0px), 10px);
     padding: 11px 8px;
     flex: 0.8;
   }
@@ -3824,7 +3841,7 @@ h1 > span:not(.heading-count) {
   margin-bottom: 18px;
 }
 .import-convention select {
-  font-size: 12px;
+  font-size: max(var(--touch-input-font-min, 0px), 12px);
   font-weight: 400;
 }
 .import-convention small {
@@ -3860,4 +3877,12 @@ h1 > span:not(.heading-count) {
 .merchant-logo[data-provider="notion"],
 .merchant-logo[data-provider="github"] {
   background: #fff;
+}
+
+/* iOS zooms focused text controls below 16px; keep desktop and larger type. */
+
+@media (pointer: coarse) {
+  :root {
+    --touch-input-font-min: 16px;
+  }
 }
