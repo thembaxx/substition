@@ -36,8 +36,8 @@ importers:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
       simple-icons:
-        specifier: ^16.38.0
-        version: 16.38.0
+        specifier: ^16.38.1
+        version: 16.38.1
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.3.5
@@ -1518,8 +1518,8 @@ packages:
       '@types/node':
         optional: true
 
-  simple-icons@16.38.0:
-    resolution: {integrity: sha512-B0Wws90eL0Fm65aH35CA8kM+7/Zzgsaytt0DndBx7VFm3+o9HurVIVRQZ1hvqqYYIyNJq7ycn3kQm2v2FhiWSQ==}
+  simple-icons@16.38.1:
+    resolution: {integrity: sha512-q4JnGp1cgeASp4jzEsmSh/7BD/e2y7aYO8XST+QBEvOJ5wzZ/9WRmKsI+QUwkfPUSiXC+sfh2+QetD38zl3N0g==}
     engines: {node: '>=0.12.18'}
 
   source-map-js@1.2.4:
@@ -2563,7 +2563,7 @@ snapshots:
       '@types/node': 26.6.6
     optional: true
 
-  simple-icons@16.38.0: {}
+  simple-icons@16.38.1: {}
 
   source-map-js@1.2.4: {}
 
