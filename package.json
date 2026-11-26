@@ -32,7 +32,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",
-    "oxfmt": "^0.75.0",
+    "oxfmt": "^0.80.0",
     "oxlint": "^1.95.0",
     "tailwindcss": "^4.3.5",
     "tsx": "^4.23.15",
